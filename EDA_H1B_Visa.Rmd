@@ -1,0 +1,184 @@
+---
+title: "MULTIVARIATE ANALYSIS -- H1B VISA DATA -- Exploratory Data Analysis (EDA)"
+author: "Ashita Shetty"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+### Loading the data 
+
+```{r}
+library(readr)
+h1b <- read_csv("C:\\Users\\Dell\\Desktop\\RBS\\Semester II\\Multivariate Analysis\\Assignment\\data\\H1_B-2014.csv")
+str(h1b)
+
+```
+
+### Loading packages
+
+```{r}
+library(lattice)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+
+options(scipen=999)
+```
+
+### EDA
+
+
+
+##### **1. What is the distribution of visa applicant status?**
+
+```{r}
+ggplot(h1b, aes(x = STATUS, fill = STATUS)) +
+  geom_bar() +
+  labs(title = "Distribution of Visa Status",
+       x = "Status",
+       y = "Count") + 
+  scale_fill_manual(values = c("CERTIFIED" = "steelblue", "REJECTED" = "red"))+
+  theme_fivethirtyeight()
+
+```
+
+##### **Inference:**
+It can be observed that *majority of the applicants have been approved of their visa application status*.
+
+
+
+##### **2. What is the distribution of Visa Classes based on their approval status?**
+
+```{r}
+ggplot(h1b, aes(VISA_CLASS)) + facet_grid(.~STATUS) + 
+  geom_bar(fill="black", position="stack", width = 0.8) + coord_flip()+ theme_fivethirtyeight()
+```
+
+##### **Inference:**
+* The analysis suggests that the majority of applicants opted for H1B, with E-3 Australian being the next popular choice.
+* Notably, **H1B** stands out as having the highest number of certifications, indicating a predominantly positive status.
+
+
+
+##### **3. Try to understand the Wage rate for case applicants, and dig further into the segregation based on Visa applied for**
+
+```{r}
+summary(h1b$LCA_CASE_WAGE_RATE_FROM)
+```
+
+
+```{r}
+ggplot(h1b, aes(x = VISA_CLASS, y = LCA_CASE_WAGE_RATE_FROM)) + 
+  geom_boxplot() + coord_flip()+
+  theme_fivethirtyeight()
+```
+
+##### **Inference:** 
+* The evidence demonstrates that the median amounts for most visa types are approximately within a similar range.
+* However, an outlier is noticeable in the H-1B visa type, where the maximum value exceeds 800,000.
+
+
+
+##### **4. What is the trend in the decision period and is there a pattern to be observed that exposes when most decisions are usually out?**
+
+```{r}
+library(lubridate)  
+# Convert DECISION_DATE to a datetime object
+h1b$DECISION_DATE <- dmy_hm(h1b$DECISION_DATE)
+
+# Extract year and month from the datetime
+h1b <- h1b %>% mutate(YearMonth = format(DECISION_DATE, "%Y-%m"))
+```
+
+```{r}
+ggplot(h1b, aes(x = YearMonth, group = 1)) + 
+  geom_line(stat = "count") + 
+  labs(title = "Time Trends of Visa Application Decisions", x = "Year-Month",y = "Number of Visa Applications")+
+  theme_fivethirtyeight()
+```
+
+##### **Inference:**
+* It is noticeable that the majority of results were announced in March for the year 2014.
+* Following March, there was a significant decrease, averaging around 1,500, which was also observed before March.
+
+
+
+##### **5. What are the 5 Most Common Job titles for H1B Visa Holders?**
+
+```{r}
+h1b %>%
+  count(LCA_CASE_JOB_TITLE) %>%
+  top_n(5, n) %>%
+  ggplot(aes(x = reorder(LCA_CASE_JOB_TITLE, n), y = n, fill = LCA_CASE_JOB_TITLE)) +
+  geom_bar(stat = "identity") +
+  labs(title = "5 Most Common Job Titles for H-1B Visa Holders",
+       x = "Job Title",
+       y = "Frequency") +
+  theme_fivethirtyeight() + coord_flip()+ theme(legend.position = "none", plot.title.position = "plot")
+
+options(repr.plot.width = 50)
+
+```
+
+##### **Inference:**
+* The visual features the top 5 job roles of H1B Visa Holders.
+* **Programmer Analyst is a clear winner in this!**
+
+
+
+##### **6. Comparison between Wage Rates & Prevailing Wage**
+
+```{r}
+ggplot(h1b, aes(x = LCA_CASE_WAGE_RATE_FROM, y = PW_1)) +
+  facet_wrap(.~STATUS)+
+  geom_point() +
+  labs(title = "Scatter Plot of Wage Rates vs. Prevailing Wage",
+       x = "Wage Rate (From)",
+       y = "Prevailing Wage") +
+  theme_fivethirtyeight()
+
+```
+
+##### **Inference:**
+* The examination of the scatter plot indicates a robust positive correlation due to the concentrated grouping of most points along a rising trend.
+* Some outliers are observed, particularly in Rejected cases.
+* A linear relationship is evident between the two variables.
+
+
+
+#### **7. What is the correlation between Numerical columns in the data?**
+
+```{r}
+h1b$WAGE_RATE_FROM <- as.numeric(h1b$LCA_CASE_WAGE_RATE_FROM)
+h1b$EMPLOYER_POSTAL_CODE <- as.numeric(h1b$LCA_CASE_EMPLOYER_POSTAL_CODE)
+h1b$EMP_DIFF <- as.numeric(h1b$EMP_DIFF)
+h1b$APP_DIFF <- as.numeric(h1b$APP_DIFF)
+h1b$TOTAL_WORKERS <- as.numeric(h1b$TOTAL_WORKERS)
+h1b$YR_SOURCE <- as.numeric(h1b$YR_SOURCE_PUB_1)
+h1b$NAICS_CODE <- as.numeric(h1b$LCA_CASE_NAICS_CODE)
+```
+
+
+```{r}
+library(corrplot)
+
+cor_matrix <- cor(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")])
+
+corrplot(cor_matrix, type = "upper", method = "color")
+```
+
+##### **Inference:**
+* The majority of these columns exhibit weak correlations, with a few displaying subtle positive associations.
+* Examples of columns with positive correlations include: Wage rate and employer postal code; Employer Postal Code and the applicant's tenure in the company; Likewise, the applicant's tenure in the company and the total number of workers in that specific company.
+
