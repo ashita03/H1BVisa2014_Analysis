@@ -1,0 +1,231 @@
+---
+title: "H1B Data - Principal Component Analysis"
+author: "Ashita Shetty"
+output: html_document
+---
+
+```{r}
+library(readr)
+h1b <- read_csv("C:\\Users\\Dell\\Desktop\\RBS\\Semester II\\Multivariate Analysis\\Assignment\\data\\H1_B-2014.csv")
+str(h1b)
+
+```
+
+```{r}
+
+attach(h1b)
+```
+
+
+### **1. Decide how many Principal Components (PCs) you want to keep and why** 
+
+```{r}
+h1b$WAGE_RATE_FROM <- as.numeric(h1b$LCA_CASE_WAGE_RATE_FROM)
+h1b$EMPLOYER_POSTAL_CODE <- as.numeric(h1b$LCA_CASE_EMPLOYER_POSTAL_CODE)
+h1b$EMP_DIFF <- as.numeric(h1b$EMP_DIFF)
+h1b$APP_DIFF <- as.numeric(h1b$APP_DIFF)
+h1b$TOTAL_WORKERS <- as.numeric(h1b$TOTAL_WORKERS)
+h1b$YR_SOURCE <- as.numeric(h1b$YR_SOURCE_PUB_1)
+h1b$NAICS_CODE <- as.numeric(h1b$LCA_CASE_NAICS_CODE)
+```
+
+
+```{r}
+cor_matrix <- cor(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")])
+cor_matrix
+
+```
+
+##### **Carrying out Principal Component Analysis of the Data (PCA)**
+
+```{r}
+h1b_pca <- prcomp(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")]
+                  ,scale=TRUE)
+
+h1b_pca
+```
+
+```{r}
+summary(h1b_pca)
+```
+
+##### **Inference**:                                                                                                                                                                                                                
+* Based on the summary of the h1b_pca - the cumulative proportion till PC 6 is 0.9380, and therefore, *6 Principal Components (PCs)* should be kept for Dimensionality reduction.
+* For further confirmation, we can visualise the Scree Diagram and Log(eigen value) diagram.
+
+
+### **2. Explain the variate representation each PCs**
+
+```{r}
+(eigen_h1b <- h1b_pca$sdev^2)
+names(eigen_h1b) <- paste("PC",1:7,sep="")
+eigen_h1b
+```
+
+```{r}
+sumlambdas <- sum(eigen_h1b)
+sumlambdas
+```
+
+```{r}
+propvar <- eigen_h1b/sumlambdas
+propvar
+```
+
+```{r}
+cumvar_h1b <- cumsum(propvar)
+cumvar_h1b
+```
+
+##### **Inference**:
+* The cumulative variance is vital in deciding how many PCs to keep for dimensionality reduction. 
+* Since this signifies how much variance does each PC contribute to the cumulative variance.
+
+
+```{r}
+matlambdas <- rbind(eigen_h1b,propvar,cumvar_h1b)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+```
+
+```{r}
+h1b_pca$rotation
+```
+
+##### **Inference**:
+* The matrix shows the weights assigned to the original columns for each principal component.
+
+
+```{r}
+h1b_pca$x
+```
+
+##### **Inference**:
+* This matrix contains the scores of each row for each principal component.
+
+
+```{r}
+# Identifying the scores based on their visa acceptance status
+
+h1btyp_pca <- cbind(data.frame(STATUS),h1b_pca$x)
+h1btyp_pca
+```
+
+```{r}
+# Means of scores for all the PC's classified by visa acceptance status
+tabmeansPC <- aggregate(h1btyp_pca[,2:8],by=list(status=h1b$STATUS),mean)
+tabmeansPC
+```
+
+```{r}
+tabmeansPC <- tabmeansPC[rev(order(tabmeansPC$status)),]
+tabmeansPC
+```
+
+```{r}
+tabfmeans <- t(tabmeansPC[,-1])
+tabfmeans
+```
+
+```{r}
+colnames(tabfmeans) <- t(as.vector(tabmeansPC[1]$status))
+tabfmeans
+```
+
+##### **Inference**:
+* This provides a summary of how the mean of the principal components is varying across different visa statuses.
+* For ex - It can be observed that the mean of PC1 is negative for the 'CERTIFIED' visa status whereas its quite positive for the visa status 'REJECTED'.
+
+
+```{r}
+# Standard deviations of scores for all the PC's classified by Visa acceptance status
+
+tabsdsPC <- aggregate(h1btyp_pca[,2:8],by=list(Status=h1b$STATUS),sd)
+tabfsds <- t(tabsdsPC[,-1])
+colnames(tabfsds) <- t(as.vector(tabsdsPC[1]$Status))
+tabfsds
+```
+
+##### **Inference**:
+* This provides a summary of how the standard deviation of the principal components is varying across different visa statuses.
+* For ex - The SD of PC1 is low for 'REJECTED' visa status whereas its quite high for 'CERTIFIED'.
+* For PC2, it relatively high for both 'CERTIFIED' and 'REJECTED' visa statuses.
+
+
+### **3. Perform some visualization using PCs.**
+
+##### **Plotting a Scree Diagram and Log(eigenvalue) to get the best number of Principal Components to take into consideration**
+
+```{r}
+plot(eigen_h1b, xlab = "Component number", ylab = "Component variance", type = "l", main = "Scree diagram")
+```
+
+```{r}
+plot(log(eigen_h1b), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+```
+
+##### **Inference**:
+* Based on the Scree Diagram, and the Log(eigenvalue) diagram, it can be determined to use 6 Principal Components. (Which matches with the number of PCs mentioned as an answer for the first question)
+
+
+```{r}
+plot(h1b_pca)
+```
+
+##### **Inference**:
+* This diagram shows the variance of all the PCs.
+
+```{r}
+h1b$STATUS <- as.factor(h1b$STATUS)
+out <- sapply(1:7, function(i){plot(h1b$STATUS, h1b_pca$x[,i],xlab=paste("PC",i,sep=""),ylab="Visa Status")})
+
+```
+
+##### **Inference**:
+* These box plots are indicative of the differences in the distribution of PC scores between 'CERTIFIED' and 'REJECTED' visa statuses for each PC.
+* For more PCs, 'CERTIFIED' have many outliers, in comparison to 'REJECT'.
+
+```{r}
+library(factoextra)
+```
+
+
+```{r}
+fviz_pca_var(h1b_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+```
+
+##### **Inference**:
+* It can be inferred that EMPLOYER_POSTAL_CODE, WAGE_RATE_FROM, EMP_DIFF are close to each other on the plot indicating similar patterns in their contributions to the principal components.
+* APP_DIFF, and YR_SOURCE indicate they are well represented by the principal components, due to their higher gradient colors.
+
+```{r}
+library(corrplot)
+library(psych)
+```
+```{r}
+# Correlation
+pairs.panels(h1b_pca$x,
+             gap = 0,
+             bg = c("red", "blue")[h1b$STATUS],
+             pch=21)
+```
+
+##### **Inference**:
+* The scatterplot of two Principal Components shows the relationship between the different pairs.
+* The pattern based on the color of the scatterplot showcases a strong pattern based on the visa status 'CERTIFIED'.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
