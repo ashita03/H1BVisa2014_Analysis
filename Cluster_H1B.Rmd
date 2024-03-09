@@ -1,0 +1,225 @@
+---
+title: "Cluster Analysis - H1B Data"
+author: "Ashita Shetty"
+---
+
+```{r}
+library(readr)
+h1b <- read_csv("C:\\Users\\Dell\\Desktop\\RBS\\Semester II\\Multivariate Analysis\\Assignment\\data\\H1_B-2014-K.csv")
+```
+
+```{r}
+
+#Loading the libraries
+
+library(cluster)
+library(readr)
+library(factoextra)
+library(magrittr)
+library(NbClust)
+```
+
+#### **1. For each model, decide the optimal number of clusters and explain why.**
+
+```{r}
+h1b$WAGE_RATE_FROM <- as.numeric(h1b$LCA_CASE_WAGE_RATE_FROM)
+h1b$EMPLOYER_POSTAL_CODE <- as.numeric(h1b$LCA_CASE_EMPLOYER_POSTAL_CODE)
+h1b$EMP_DIFF <- as.numeric(h1b$EMP_DIFF)
+h1b$APP_DIFF <- as.numeric(h1b$APP_DIFF)
+h1b$TOTAL_WORKERS <- as.numeric(h1b$TOTAL_WORKERS)
+h1b$YR_SOURCE <- as.numeric(h1b$YR_SOURCE_PUB_1)
+h1b$NAICS_CODE <- as.numeric(h1b$LCA_CASE_NAICS_CODE)
+```
+
+##### **Scaling the H1B data**
+
+```{r}
+matstd.h1b <- scale(h1b[, c( "WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS")])
+rownames(matstd.h1b) <- h1b$LCA_CASE_JOB_TITLE
+```
+
+```{r}
+matstd.h1b
+```
+
+
+```{r}
+dist.h1b <- dist(matstd.h1b, method = "euclidean")
+clush1b.nn <- hclust(dist.h1b, method = "single")
+```
+
+##### **To find the Optimal Number of Clusters - Elbow Plot**
+
+```{r}
+fviz_nbclust(matstd.h1b, kmeans, method = "wss")+geom_vline(xintercept = 4, linetype = 2)
+```
+
+##### **Inference:**
+* The elbow plot above helps to identify the **optimal number of clusters**, which for our case is **4**
+
+##### **Dendogram**
+
+```{r}
+plot(as.dendrogram(clush1b.nn),ylab="Distance between diffferent job titles",ylim=c(0,10),
+     main="Dendrogram")
+```
+
+##### **Inference:**
+* The Dendogram demonstrates the different clusters that can be formed based on the Profession of individuals who have applied for Visa. These clusters are being formed based on the multiple numerical columns that potentially contribute.
+
+
+#### **2. Show the membership for each cluster**
+
+##### **Clustering Analysis** 
+
+```{r}
+set.seed(123)
+kmeans4.h1b <- kmeans(matstd.h1b, 4, nstart = 25)
+
+kmeans4.h1b
+```
+
+
+```{r}
+clus1 <- matrix(names(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 1]), 
+                ncol=1, nrow=length(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 1]))
+colnames(clus1) <- "Cluster 1"
+
+clus2 <- matrix(names(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 2]), 
+                ncol=1, nrow=length(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 2]))
+colnames(clus2) <- "Cluster 2"
+
+clus3 <- matrix(names(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 3]), 
+                ncol=1, nrow=length(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 3]))
+colnames(clus3) <- "Cluster 3"
+
+clus4 <- matrix(names(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 4]), 
+                ncol=1, nrow=length(kmeans4.h1b$cluster[kmeans4.h1b$cluster == 4]))
+colnames(clus4) <- "Cluster 4"
+
+list(clus1,clus2, clus3, clus4)
+```
+##### **Inference:**
+* Based on the results derived from the Elbow Plot, we have created 4 Clusters.
+* The output signifies the different clusters that have multiple professions clubbed together based on the multiple factors.
+
+```{r}
+km.res <- kmeans(matstd.h1b, 4, nstart = 25)
+# Visualize
+fviz_cluster(km.res, data = matstd.h1b,
+             pca = FALSE,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal(),
+             geom = "point",
+             pointsize = 3,  
+             show.clust.cent = TRUE,  
+             repel = TRUE)
+```
+
+*The names of the job titles have been not displayed to avoid extreme clutter.*
+
+##### **Inference:**
+* Based on the output of different clusters with the professions in each, it can be observed how the different clusters have been formed.
+* It can be observed that Clusters 3, and 4 are the most populated, whereas Cluster 1 can be observed to be the least with just a line.
+
+
+#### **3. Show a visualization of the cluster and membership using the first two Principal Components**
+
+##### **Conducting PCA on the scaled data of H1B**
+
+```{r}
+pca_h1b <- prcomp(matstd.h1b, scale = TRUE)
+pca_h1b
+```
+
+```{r}
+summary(pca_h1b)
+```
+
+* The **cumulative variance** if first two Principal Components are considered is **0.49**.
+
+```{r}
+pca_h1b$x
+```
+
+##### **Considering only the first two Principal Components:**
+
+```{r}
+PC1 <- pca_h1b$x[, 1]
+PC2 <- pca_h1b$x[, 2]
+```
+
+```{r}
+pca_h1b_df <- data.frame(Index = rownames(pca_h1b$x),PC1 = PC1, PC2 = PC2)
+pca_h1b_df
+```
+
+##### **To find the Optimal Number of Clusters - Elbow Plot**
+
+```{r}
+matstd.h1b_pca <- pca_h1b_df[, c("PC1", "PC2")]
+```
+
+
+```{r}
+fviz_nbclust(matstd.h1b_pca, kmeans, method = "wss")+geom_vline(xintercept = 4, linetype = 2)
+```
+
+##### **Inference:**
+* It can be observed that **4** is given as the **optimal number of clusters for the first two Principal Components**
+
+##### **Clustering Analysis**
+
+```{r}
+set.seed(123)
+kmeans4.h1b_pca <- kmeans(matstd.h1b_pca, 4, nstart = 25)
+
+kmeans4.h1b_pca
+```
+
+```{r}
+clus1_pca <- matrix(names(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 1]), 
+                ncol=1, nrow=length(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 1]))
+colnames(clus1_pca) <- "Cluster 1"
+
+clus2_pca <- matrix(names(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 2]), 
+                ncol=1, nrow=length(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 2]))
+colnames(clus2_pca) <- "Cluster 2"
+
+clus3_pca <- matrix(names(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 3]), 
+                ncol=1, nrow=length(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 3]))
+colnames(clus3_pca) <- "Cluster 3"
+
+clus4_pca <- matrix(names(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 4]), 
+                ncol=1, nrow=length(kmeans4.h1b_pca$cluster[kmeans4.h1b_pca$cluster == 4]))
+colnames(clus4_pca) <- "Cluster 4"
+
+list(clus1_pca, clus2_pca, clus3_pca, clus4_pca)
+
+```
+##### **Inference:**
+* Based on the results derived from the Elbow Plot, we have created 4 Clusters.
+* The output signifies the different clusters that have multiple professions clubbed together based on the first two Principal Components (PCs)
+
+```{r}
+km.res_pca <- kmeans(matstd.h1b_pca, 4, nstart = 25)
+# Visualize
+fviz_cluster(km.res_pca, data = matstd.h1b_pca,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal(),
+             geom = "point",
+             pointsize = 3,  
+             show.clust.cent = TRUE,  
+             repel = TRUE)
+```
+
+*The names of the job titles have been not displayed to avoid extreme clutter.*
+
+##### **Inference:**
+* In comparison to the previous clustering performed, it can be discerned that the clustering sizes have changed. For example - Cluster 1 is no more just a line, similarly Cluster 2 have also clubbed  more professions together 
+* However, Cluster 3 and 4 are still the largest observable clusters.
+
+
+
