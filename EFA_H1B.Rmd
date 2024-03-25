@@ -1,0 +1,163 @@
+---
+title: "H1B Data - Factor Analysis"
+author: "Ashita Shetty"
+output: html_document
+---
+
+```{r}
+library(psych)
+library(readr)
+
+h1b <- read.csv("C:\\Users\\Dell\\Desktop\\RBS\\Semester II\\Multivariate Analysis\\Assignment\\data\\H1_B-2014.csv", row.names = 1)
+attach(h1b)
+h1b[1]
+```
+
+
+##### **1. Decide how many Factors are ideal for your dataset**
+
+```{r}
+h1b$WAGE_RATE_FROM <- as.numeric(h1b$LCA_CASE_WAGE_RATE_FROM)
+h1b$EMPLOYER_POSTAL_CODE <- as.numeric(h1b$LCA_CASE_EMPLOYER_POSTAL_CODE)
+h1b$EMP_DIFF <- as.numeric(h1b$EMP_DIFF)
+h1b$APP_DIFF <- as.numeric(h1b$APP_DIFF)
+h1b$TOTAL_WORKERS <- as.numeric(h1b$TOTAL_WORKERS)
+h1b$YR_SOURCE <- as.numeric(h1b$YR_SOURCE_PUB_1)
+h1b$NAICS_CODE <- as.numeric(h1b$LCA_CASE_NAICS_CODE)
+```
+
+
+```{r}
+fa.parallel(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")]) 
+```
+
+**Inference:**
+
+* Following the FA Actual Data in the Parallel Analysis Scree Plot, we can infer **2 as the ideal number of factors** for the dataset.
+
+
+##### **2. Explain the output for your factor model**
+
+```{r}
+fit.pc <- principal(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")], nfactors=2, rotate="varimax")
+fit.pc
+```
+
+**Inference:**
+
+* The above has summarized the results of the factor analysis including eigen values, for 2 factors.
+* **2 Factors** have been chosen due to the results by Parallel Analysis Scree Plot.
+
+```{r}
+round(fit.pc$values, 3)
+fit.pc$loadings
+```
+
+**Inference:**
+
+* The loadings give the correlation, and leave out the values that may be way below a threshold making it unimportant.
+* An inference of how heavily correlated APP_DIFF(positive correlation) and YR_SOURCE(negative correlation) are to RC1 can be drawn.
+
+```{r}
+fit.pc$communality
+```
+
+**Inference:**
+
+* Lowest communality strengthens the deciding factor of whether or not a specific column can be kept due to their low score.
+* For instance, in the case of H1B data, it can be observed that TOTAL_WORKERS has the least communality score, followed by EMP_DIFF, and more.
+
+```{r}
+fit.pc$scores
+```
+
+**Inference:**
+
+* The scores represent the transformed data in the factor analysis.
+
+
+##### **3. Show the columns that go into each factor**
+
+* Visualizing the relationship can help understand which columns go into the respective factors
+
+```{r}
+fa.diagram(fit.pc)
+```
+
+**Inference:**
+
+* Our main aim is to reduce the dimensions by also observing the respective cumulative variance.
+* TOTAL_WORKERS is not a part of any factor due to its low contribution, which is also supported by the low communality score. 
+* RC2 can also be considered to be dropped since it does not contribute much to the cumulative variance.
+
+
+##### **4. Perform some visualizations using the factors**
+
+**Correlations within Factors**
+
+```{r}
+fa.plot(fit.pc)
+```
+
+**Inference:**
+
+* This diagram can help interpret the relationship between the factors.
+* This is a two dimensional representation due to 2 factors chosen.
+
+**Factor Recommendations for a Simple Structure**
+
+```{r}
+vss(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")])
+```
+
+**Inference:**
+
+* According to the results provided by Very Simple Structure, the optimal no. of factors is **3 Factors** with both **VSS complexity 1 and VSS complexity 2**.
+* Lower BIC values indicate better model, and the minimum **BIC value** in our case is at **3 factors**. Similarly, **Sample Size adjusted BIC** gives a minimum at **3 factors**. 
+* The **Velicer MAP** achieves its minimum score at **1 factor**, however, it is considered less reliable compared to the other results while determining the ideal number of factors.
+* The graph result does not provide much clarity due to its overlapping nature.
+
+
+##### **Based on the results above, visualizing the relationship for 3 factors**
+
+```{r}
+fit.pc_2 <- principal(h1b[, c("WAGE_RATE_FROM", "EMPLOYER_POSTAL_CODE", "APP_DIFF", "EMP_DIFF", "TOTAL_WORKERS", "YR_SOURCE", "NAICS_CODE")], nfactors=3, rotate="varimax")
+
+round(fit.pc_2$values, 3)
+
+```
+
+```{r}
+fit.pc_2$loadings
+```
+
+**Inference:**
+
+* The loadings is providing relationship between different columns and their respective relations with RCs.
+* We can observe the cumulative variance for 3 factors, and it is observable how not much variance increases in RC2, and RC3.
+
+```{r}
+fit.pc_2$communality
+```
+
+**Inference:**
+
+* As a comparative study, it can be observed that in the case of 3 factors, TOTAL_WORKERS does not have the lowest communality. 
+* Instead 'WAGE_RATE_FROM' has the lowest communality score here.
+
+```{r}
+fit.pc_2$scores
+```
+
+**Inference:**
+
+* The scores represent the transformed data in the factor analysis. In this case, for factor = 3
+
+```{r}
+fa.diagram(fit.pc_2)
+```
+
+**Inference:**
+
+* Based on the relationship visualization, TOTAL_WORKERS which was not grouped into any factor in 2 factors has now been grouped into RC2. 
+* However, the **RC2** can be considered to be dropped due to its lower contribution.
